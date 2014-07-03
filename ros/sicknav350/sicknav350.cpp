@@ -16,8 +16,6 @@
 #include <nav_msgs/Odometry.h>
 #define DEG2RAD(x) ((x)*M_PI/180.)
 
-using namespace std;
-using namespace SickToolbox;
 
 // TODO: refactor these functions into a common util lib (similar to code in sicklms.cpp)
 void publish_scan(ros::Publisher *pub, double *range_values,
@@ -165,8 +163,8 @@ int main(int argc, char *argv[]) {
 	nh_ns.param("scan_rate", sick_motor_speed, 5); 
 	//	ipaddress="127.0.0.1";
 	/* Define buffers for return values */
-	double range_values[SickNav350::SICK_MAX_NUM_MEASUREMENTS] = {0};
-	unsigned int intensity_values[SickNav350::SICK_MAX_NUM_MEASUREMENTS] = {0};
+	double range_values[SickToolbox::SickNav350::SICK_MAX_NUM_MEASUREMENTS] = {0};
+	unsigned int intensity_values[SickToolbox::SickNav350::SICK_MAX_NUM_MEASUREMENTS] = {0};
 	/* Define buffers to hold sector specific data */
 	unsigned int num_measurements = {0};
 	unsigned int sector_start_timestamp = {0};
@@ -175,7 +173,7 @@ int main(int argc, char *argv[]) {
 	double sector_start_angle = {0};
 	double sector_stop_angle = {0};
 	/* Instantiate the object */
-	SickNav350 sick_nav350(ipaddress.c_str(),port);
+	SickToolbox::SickNav350 sick_nav350(ipaddress.c_str(),port);
 	double last_time_stamp=0;
 	try {
 		/* Initialize the device */
