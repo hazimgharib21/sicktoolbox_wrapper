@@ -218,7 +218,7 @@ int main(int argc, char *argv[]) {
 			y2=y1-529*sin(phi2);
 			x2=x2/1000;
 			y2=y2/1000;
-			std::cout<<sick_nav350.PoseData_.x<<"   "<<x1<<" "<<y1<<"   "<<x2<<" "<<y2<<std::endl;
+			ROS_DEBUG("%d %f %f %f %f", sick_nav350.PoseData_.x, x1, y1, x2, y2);
 			PublishReflectorTransform(x2,y2,phi2,odom_broadcaster);
 			if (sector_start_timestamp<last_time_stamp) 
 			{
