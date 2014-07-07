@@ -47,7 +47,7 @@ void publish_scan(ros::Publisher *pub, double *range_values,
 	}
 	scan_msg.intensities.resize(n_intensity_values);
 	for (size_t i = 0; i < n_intensity_values; i++) {
-		scan_msg.intensities[i] = 0;//(float)intensity_values[i];
+		scan_msg.intensities[i] = (float)intensity_values[i];
 	}
 	pub->publish(scan_msg);
 }
@@ -182,6 +182,7 @@ int main(int argc, char *argv[]) {
 		try {
 			//		sick_nav350.GetSickIdentity();
 			sick_nav350.SetOperatingMode(3);
+			sick_nav350.SetScanDataFormat(1, 1);
 		} catch (...) {
 			ROS_ERROR("Configuration error");
 			return -1;
@@ -200,7 +201,7 @@ int main(int argc, char *argv[]) {
 			/* Grab the measurements (from all sectors) */
 			sick_nav350.GetDataLandMark(1,1);
 			//sick_nav350.GetDataNavigation(1,1);
-			sick_nav350.GetSickMeasurements(range_values,
+			sick_nav350.GetSickMeasurementsWithRemission(range_values,intensity_values,
 					&num_measurements,
 					&sector_step_angle,
 					&sector_start_angle,
