@@ -55,6 +55,7 @@ int main(int argc, char *argv[]) {
 	try {
 		/* Initialize the device */
 		sick_nav350.Initialize();
+		sick_nav350.SetAccessMode(3);
 
 		try {
 			sick_nav350.GetSickIdentity();
@@ -64,7 +65,14 @@ int main(int argc, char *argv[]) {
 			std::cout << "\t\tDevice Serial Number : " << sick_nav350.GetSickSerialNumber() << std::endl;
 			std::cout << "\t\tDevice Firmware Version : " << sick_nav350.GetSickFirmwareVersion() << std::endl;
 			std::cout << "\t\tDevice Version : " << sick_nav350.GetSickSoftwareVersion() << std::endl;
-			//sick_nav350.SetOperatingMode(3);
+
+			//Change to standby mode for initialization
+
+			sick_nav350.SetOperatingMode(1);
+			sick_nav350.SetCurrentLayer(1);
+			sick_nav350.SetPoseDataFormat(1,0);
+			sick_nav350.SetOperatingMode(4);
+
 			//sick_nav350.SetScanDataFormat(1, 1);
 		} catch (...) {
 			ROS_ERROR("Configuration error");
@@ -74,6 +82,7 @@ int main(int argc, char *argv[]) {
 
 		while (ros::ok()) {
 
+			sick_nav350.GetPoseData(1,2);
 			loop_rate.sleep();
 			ros::spinOnce();
 
