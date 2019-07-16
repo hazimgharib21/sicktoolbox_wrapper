@@ -31,6 +31,7 @@ int main(int argc, char *argv[]) {
 	double smoothing_factor, error_threshold;
 	ros::NodeHandle nh;
 	ros::NodeHandle nh_ns("~");
+	ros::Rate loop_rate(8);
 	nh_ns.param<std::string>("scan", scan, "scan");
 	ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>(scan, 1);
 	nh_ns.param("port", port, DEFAULT_SICK_TCP_PORT);
@@ -56,12 +57,20 @@ int main(int argc, char *argv[]) {
 		sick_nav350.Initialize();
 
 		try {
-			sick_nav350.SetOperatingMode(3);
-			sick_nav350.SetScanDataFormat(1, 1);
+			sick_nav350.GetSickIdentity();
+			std::cout << "\n\t\tSick Device Identity" << std::endl;
+			std::cout << "\t\tDevice Name : " << sick_nav350.GetSickName() << std::endl;
+			std::cout << "\t\tDevice Version : " << sick_nav350.GetSickVersion() << std::endl;
+			std::cout << "\t\tDevice Serial Number : " << sick_nav350.GetSickSerialNumber() << std::endl;
+			std::cout << "\t\tDevice Firmware Version : " << sick_nav350.GetSickFirmwareVersion() << std::endl;
+			std::cout << "\t\tDevice Version : " << sick_nav350.GetSickSoftwareVersion() << std::endl;
+			//sick_nav350.SetOperatingMode(3);
+			//sick_nav350.SetScanDataFormat(1, 1);
 		} catch (...) {
 			ROS_ERROR("Configuration error");
 			return -1;
 		}
+
 
 		while (ros::ok()) {
 
