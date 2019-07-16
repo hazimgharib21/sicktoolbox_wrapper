@@ -82,7 +82,25 @@ int main(int argc, char *argv[]) {
 
 		while (ros::ok()) {
 
-			sick_nav350.GetPoseData(1,2);
+			sick_nav350.GetDataNavigation(1,2);
+			std::cout << "\n=================================" << std::endl;
+			std::cout << "Pose X : " << sick_nav350.PoseData_.x << std::endl;
+			std::cout << "Pose Y : " << sick_nav350.PoseData_.y << std::endl;
+			std::cout << "Pose phi : " << sick_nav350.PoseData_.phi << std::endl;
+			std::cout << "Landmark Data follow : " << sick_nav350.PoseData_.optionalLandmarkData << std::endl;
+			std::cout << "Num Reflector : " << sick_nav350.ReflectorData_.num_reflector << std::endl;
+			for(int i = 0; i < sick_nav350.ReflectorData_.num_reflector;i++){
+				if(sick_nav350.ReflectorData_.cart[i]!=0){
+					std::cout << "Reflector " << i << std::endl;
+					std::cout << "X : " << sick_nav350.ReflectorData_.x[i] << std::endl;
+					std::cout << "Y : " << sick_nav350.ReflectorData_.y[i] << std::endl;
+				}else if(sick_nav350.ReflectorData_.polar[i]!=0){
+					std::cout << "Reflector " << i << std::endl;
+					std::cout << "Dist : " << sick_nav350.ReflectorData_.dist[i] << std::endl;
+					std::cout << "Phi : " << sick_nav350.ReflectorData_.phi[i] << std::endl;
+				}
+			}
+			std::cout << "=================================\n" << std::endl;
 			loop_rate.sleep();
 			ros::spinOnce();
 
