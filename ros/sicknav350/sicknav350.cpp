@@ -71,7 +71,13 @@ int main(int argc, char *argv[]) {
 			sick_nav350.SetOperatingMode(1);
 			sick_nav350.SetCurrentLayer(1);
 			sick_nav350.SetPoseDataFormat(1,0);
+			sick_nav350.SetReflectorWindow(500,500,500,60000);
+			sick_nav350.SetReflectorSize(80);
+			sick_nav350.SetReflectorType(1);
+			sick_nav350.SetLandmarkMatching(1);
+			sick_nav350.SetActionRadius(400, 70000);
 			sick_nav350.SetOperatingMode(4);
+			sick_nav350.SetPose(0,0,0);
 
 			//sick_nav350.SetScanDataFormat(1, 1);
 		} catch (...) {
