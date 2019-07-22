@@ -16,6 +16,7 @@
 #include <nav_msgs/Odometry.h>
 #define DEG2RAD(x) ((x)*M_PI/180.)
 
+void vx, vy, vth;
 
 // TODO: refactor these functions into a common util lib (similar to code in sicklms.cpp)
 void publish_scan(ros::Publisher *pub, double *range_values,
@@ -197,7 +198,7 @@ int main(int argc, char *argv[]) {
 		tf::TransformBroadcaster odom_broadcaster;
 
 		while (ros::ok()) {
-		
+
 			/* Grab the measurements (from all sectors) */
 			sick_nav350.GetDataLandMark(1,1);
 			//sick_nav350.GetDataNavigation(1,1);

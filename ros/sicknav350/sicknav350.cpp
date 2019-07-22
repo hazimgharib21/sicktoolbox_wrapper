@@ -14,38 +14,88 @@
 #include <deque>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
+#include "sensor_msgs/LaserScan.h"
 #define DEG2RAD(x) ((x)*M_PI/180.)
+
+double vx = 0.0;
+double vy = 0.0;
+double vth = 0.0;
+
+namespace OperatingModes{
+	enum OperatingMode{
+		POWERDOWN = 0,
+		STANDBY = 1,
+		MAPPING = 2,
+		LANDMARK = 3,
+		NAVIGATION = 4,
+	};
+}
+typedef OperatingModes::OperatingMode OperatingMode;
+
+namespace ReflectorTypes{
+	enum ReflectorType{
+		FLAT = 1,
+		CYLINDRICAL = 2,
+	};
+}
+typedef ReflectorTypes::ReflectorType ReflectorType;
+
+namespace Users{
+	enum User{
+		OPERATOR = 2,
+		AUTHORIZED_CLIENT = 3,
+	};
+}
+typedef Users::User User;
+
+void OdometryCallback(const nav_msgs::Odometry::CostPtr& msg){
+	vx=msg->twist.twist.linear.x;
+	vy=msg->twist.twist.linear.y;
+	vth=msg->twist.twist.angular.z;
+}
+
+void publish_scan(ros::Publisher *pub, double *range_values,
+	uint32_t n_range_values, unsigned int *intensity_values,
+	ros::Time start, double scan_time, float angle_min, float angle_max){
+
+
+		sensor_msgs::LaserScan scan_msg;
+
+		scan_msg.header.frame_id = "laser";
+		scan_msg.angle_min = angle_min;
+		scan_msg.angle_max = angle_max;
+		scan_msg.angle_increment = (scan_msg.angle_max - scan_msg.angle_min) / (double)(n_range_values - 1);
+		scan_msg.scan_time = 0.125;
+		scann_msg.time_increment = scan_msg.scan_time / n_range_values;
+		scan_msg.range_min = 0.1;
+		scan_msg.range_max = 250.;
+		scan_msg.ranges.resize(n_range_values);
+		scan_msg.header.stamp = start;
+		for(size_t i = 0; i < n_range_values; i++){
+			scan_msg.ranges[i] = (float(range_values[i]/1000));
+		}
+		scan_msg.intensities.resize(n_range_values);
+		for(size_t i = 0; i < n_range_values; i++){
+			scan_msg.intensities[i] = (float)intensity_values[i];
+		}
+		pub->publish(scan_msg);
+	}
+
+
 
 int main(int argc, char *argv[]) {
 
 	ros::init(argc, argv, "sicknav350");
 	int port;
 	std::string ipaddress;
-	std::string frame_id;
-	std::string scan;
-	bool inverted;
-	int sick_motor_speed = 8;//10; // Hz
-	double sick_step_angle = 1.5;//0.5;//0.25; // deg (0.125 = no gaps between spots)
-	double active_sector_start_angle = 0;
-	double active_sector_stop_angle = 360;//269.75;
-	double smoothing_factor, error_threshold;
 	ros::NodeHandle nh;
 	ros::NodeHandle nh_ns("~");
 	ros::Rate loop_rate(8);
-	nh_ns.param<std::string>("scan", scan, "scan");
 	ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>(scan, 1);
 	nh_ns.param("port", port, DEFAULT_SICK_TCP_PORT);
 	nh_ns.param("ipaddress", ipaddress, (std::string)DEFAULT_SICK_IP_ADDRESS);
-	nh_ns.param("inverted", inverted, false);
-	nh_ns.param<std::string>("frame_id", frame_id, "laser");
-	nh_ns.param("timer_smoothing_factor", smoothing_factor, 0.97);
-	nh_ns.param("timer_error_threshold", error_threshold, 0.5);
-	nh_ns.param("resolution", sick_step_angle, 1.0);
-	nh_ns.param("start_angle", active_sector_start_angle, 0.);
-	nh_ns.param("stop_angle", active_sector_stop_angle, 360.);
-	nh_ns.param("scan_rate", sick_motor_speed, 5);
-
 	/* Define buffers for return values */
+
 	double range_values[SickToolbox::SickNav350::SICK_MAX_NUM_MEASUREMENTS] = {0};
 	unsigned int intensity_values[SickToolbox::SickNav350::SICK_MAX_NUM_MEASUREMENTS] = {0};
 
@@ -55,7 +105,7 @@ int main(int argc, char *argv[]) {
 	try {
 		/* Initialize the device */
 		sick_nav350.Initialize();
-		sick_nav350.SetAccessMode(3);
+		sick_nav350.SetAccessMode((int)Users::AUTHORIZED_CLIENT);
 
 		try {
 			sick_nav350.GetSickIdentity();
@@ -68,15 +118,30 @@ int main(int argc, char *argv[]) {
 
 			//Change to standby mode for initialization
 
-			sick_nav350.SetOperatingMode(1);
+			sick_nav350.SetOperatingMode((int)OperatingModes::STANDBY);
 			sick_nav350.SetCurrentLayer(1);
+
+			/**
+			 * SetPoseDataFormat
+			 * /param OutputMode {int} - 0 Normal
+			 * 				  			 1 Extrapolated
+			 * /param ShowOptParam {int} - 0 Suppressed
+			 *				  			   1 Enabled
+			 */
 			sick_nav350.SetPoseDataFormat(1,0);
 			sick_nav350.SetReflectorWindow(500,500,500,60000);
 			sick_nav350.SetReflectorSize(80);
-			sick_nav350.SetReflectorType(1);
+			sick_nav350.SetReflectorType((int)ReflectorTypes::FLAT);
+
+			/**
+			 * SetLandmarkMatching
+			 * /param Filter {int} - 0 Optimal
+			 *						 1 Optimal + angle
+			 * 						 2 Optimal + angle + partially covered
+			 */
 			sick_nav350.SetLandmarkMatching(1);
 			sick_nav350.SetActionRadius(400, 70000);
-			sick_nav350.SetOperatingMode(4);
+			sick_nav350.SetOperatingMode((int)OperatingModes::NAVIGATION);
 			sick_nav350.SetPose(0,0,0);
 
 			//sick_nav350.SetScanDataFormat(1, 1);
@@ -107,6 +172,20 @@ int main(int argc, char *argv[]) {
 				}
 			}
 			std::cout << "=================================\n" << std::endl;
+
+			sick_nav350.GetSickMeasurementsWithRemission(range_values, intensity_values,
+				&num_measurements,
+				&sector_step_angle,
+				&sector_start_angle,
+				&sector_stop_angle,
+				&sector_start_timestamp,
+				&sector_stop_timestamp
+			);
+
+			publish_scan(&scan_pub, range_values, num_measurements, intensity_values,
+				num_measurements, start_scan_time, scan_duration, sector_start_angle, sector_stop_angle);
+
+			sick_nav350.SetSpeed(vx,vy,vth, sector_start_timestamp,0);
 			loop_rate.sleep();
 			ros::spinOnce();
 
