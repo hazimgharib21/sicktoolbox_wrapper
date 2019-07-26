@@ -38,6 +38,12 @@ target_link_libraries(sicklms ${catkin_LIBRARIES})
 add_executable(sicknav350 ros/sicknav350/sicknav350.cpp)
 target_link_libraries(sicknav350 ${catkin_LIBRARIES})
 
+add_executable(sicknav350_map ros/sicknav350/sicknav350_map.cpp)
+target_link_libraries(sicknav350_map ${catkin_LIBRARIES})
+
+add_executable(sicknav350_nav ros/sicknav350/sicknav350_nav.cpp)
+target_link_libraries(sicknav350_nav ${catkin_LIBRARIES})
+
 add_executable(print_scans standalone/print_scans.cpp)
 target_link_libraries(print_scans ${catkin_LIBRARIES})
 

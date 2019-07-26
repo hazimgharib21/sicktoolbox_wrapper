@@ -164,6 +164,7 @@ int main(int argc, char *argv[]) {
 	ros::Publisher scan_pub = nh.advertise<sensor_msgs::LaserScan>(scan, 1);
 	nh_ns.param("port", port, DEFAULT_SICK_TCP_PORT);
 	nh_ns.param("ipaddress", ipaddress, (std::string)DEFAULT_SICK_IP_ADDRESS);
+	ros::Rate loop_rate(8);
 	int opmode = (int)OperatingModes::MAPPING;
 
 	/* Define buffers for return values */
@@ -222,151 +223,53 @@ int main(int argc, char *argv[]) {
 			 * 						 2 Optimal + angle + partially covered
 			 */
 			sick_nav350.SetLandmarkMatching(0);
+			sick_nav350.SetMappingConfiguration(1, 1, 0,0,0);
 
-
-			if(opmode == (int)OperatingModes::MAPPING){
-				sick_nav350.SetMappingConfiguration(50, 0, 0,0,0);
-				sick_nav350.SetOperatingMode((int)OperatingModes::MAPPING);
-			}else if(opmode == (int)OperatingModes::NAVIGATION){
-				sick_nav350.SetOperatingMode((int)OperatingModes::NAVIGATION);
-				sick_nav350.SetPose(5000000,0,0);
-			}
-			//sick_nav350.SetScanDataFormat(1, 1);
+			// Change to mapping mode for mapping
+			sick_nav350.SetOperatingMode((int)OperatingModes::MAPPING);
 
 		} catch (...) {
 			ROS_ERROR("Configuration error");
 			return -1;
 		}
 
-		smoothtime smoothtimer;
-		averager avg_fulldur, avg_scandur;
-		smoothtimer.set_smoothing_factor(smoothing_factor);
-		smoothtimer.set_error_threshold(error_threshold);
-		ros::Time last_start_scan_time;
-		unsigned int last_sector_stop_timestamp = 0;
-		double full_duration;
-		ros::Rate loop_rate(8);
-
 		while (ros::ok()) {
 
-			if(opmode == (int)OperatingModes::MAPPING){
-				sick_nav350.DoMapping();
-				std::cout << "\n=================================" << std::endl;
-				std::cout << "ERROR : " << sick_nav350.ReflectorData_.error << std::endl;
-				if(sick_nav350.ReflectorData_.error == 0){
-					std::cout << "Num Reflector : " << sick_nav350.ReflectorData_.num_reflector << std::endl;
-					int temp[sick_nav350.ReflectorData_.num_reflector][7];
-					for(int i = 0; i < sick_nav350.ReflectorData_.num_reflector; i++){
-						if(sick_nav350.ReflectorData_.cart[i] != 0){
-							std::cout << "Mean : " << sick_nav350.ReflectorData_.meanEchoAmplitude[i] << std::endl;
-							if(sick_nav350.ReflectorData_.meanEchoAmplitude[i] < 1000){
-								temp[i][0] = sick_nav350.ReflectorData_.x[i];
-								temp[i][1] = sick_nav350.ReflectorData_.y[i];
-								temp[i][2] = sick_nav350.ReflectorData_.type[i];
-								temp[i][3] = sick_nav350.ReflectorData_.subtype[i];
-								temp[i][4] = sick_nav350.ReflectorData_.size[i];
-								temp[i][5] = 1;
-								temp[i][6] = sick_nav350.ReflectorData_.LocalID[i];
-							}
-							/*
-							std::cout << "------------------------------" << std::endl;
-							std::cout << "Reflector " << i << std::endl;
-							std::cout << "X : " << sick_nav350.ReflectorData_.x[i] << std::endl;
-							std::cout << "Y : " << sick_nav350.ReflectorData_.y[i] << std::endl;
-							std::cout << "LocalID : " << sick_nav350.ReflectorData_.LocalID[i] << std::endl;
-							std::cout << "GlobalID : " << sick_nav350.ReflectorData_.GlobalID[i] << std::endl;
-							std::cout << "Size : " << sick_nav350.ReflectorData_.size[i] << std::endl;*/
-							std::cout << "Mean : " << sick_nav350.ReflectorData_.meanEchoAmplitude[i] << std::endl;
-							/*
-							std::cout << "Start : " << sick_nav350.ReflectorData_.indexStart[i] << std::endl;
-							std::cout << "End : " << sick_nav350.ReflectorData_.indexEnd[i] << std::endl;
-							*/
+			sick_nav350.DoMapping();
+			std::cout << "\n=================================" << std::endl;
+			std::cout << "ERROR : " << sick_nav350.ReflectorData_.error << std::endl;
+			if(sick_nav350.ReflectorData_.error == 0){
+				std::cout << "Num Reflector : " << sick_nav350.ReflectorData_.num_reflector << std::endl;
+				int temp[sick_nav350.ReflectorData_.num_reflector][7];
+				for(int i = 0; i < sick_nav350.ReflectorData_.num_reflector; i++){
+					if(sick_nav350.ReflectorData_.cart[i] != 0){
+						if(sick_nav350.ReflectorData_.meanEchoAmplitude[i] < 1000){
+							temp[i][0] = sick_nav350.ReflectorData_.x[i];
+							temp[i][1] = sick_nav350.ReflectorData_.y[i];
+							temp[i][2] = sick_nav350.ReflectorData_.type[i];
+							temp[i][3] = sick_nav350.ReflectorData_.subtype[i];
+							temp[i][4] = sick_nav350.ReflectorData_.size[i];
+							temp[i][5] = 1;
+							temp[i][6] = 1;
 						}
 					}
-
-					sick_nav350.AddLandmark(sick_nav350.ReflectorData_.num_reflector, temp);
-					for(int i = 0; i < sick_nav350.ReflectorData_.num_reflector; i++){
-
-						std::cout << "-------------------------------------" << std::endl;
-						std::cout << "Reflector " << i << std::endl;
-						std::cout << "X : " << temp[i][0] << std::endl;
-						std::cout << "Y : " << temp[i][1] << std::endl;
-						std::cout << "Type : " << temp[i][2] << std::endl;
-						std::cout << "Subtype : " << temp[i][3] << std::endl;
-						std::cout << "size : " << temp[i][4] << std::endl;
-						std::cout << "Layer : " << temp[i][5] << std::endl;
-						std::cout << "LayerID : " << temp[i][6] << std::endl;
-					}
-				}
-				std::cout << "=================================\n" << std::endl;
-
-			}else if(opmode == (int)OperatingModes::NAVIGATION){
-				sick_nav350.GetDataNavigation(1,2);
-				std::cout << "Error : " << sick_nav350.PoseData_.error << std::endl;
-				if(sick_nav350.PoseData_.error == 0){
-
-					std::cout << "\n=================================" << std::endl;
-					std::cout << "Pose X : " << sick_nav350.PoseData_.x << std::endl;
-					std::cout << "Pose Y : " << sick_nav350.PoseData_.y << std::endl;
-					std::cout << "Pose phi : " << sick_nav350.PoseData_.phi << std::endl;
-					std::cout << "Landmark Data follow : " << sick_nav350.PoseData_.optionalLandmarkData << std::endl;
-					std::cout << "Num Reflector : " << sick_nav350.ReflectorData_.num_reflector << std::endl;
-					for(int i = 0; i < sick_nav350.ReflectorData_.num_reflector;i++){
-
-						if(sick_nav350.ReflectorData_.cart[i]!=0){
-							std::cout << "Reflector " << i << std::endl;
-							std::cout << "X : " << sick_nav350.ReflectorData_.x[i] << std::endl;
-							std::cout << "Y : " << sick_nav350.ReflectorData_.y[i] << std::endl;
-						}else if(sick_nav350.ReflectorData_.polar[i]!=0){
-							std::cout << "Reflector " << i << std::endl;
-							std::cout << "Dist : " << sick_nav350.ReflectorData_.dist[i] << std::endl;
-							std::cout << "Phi : " << sick_nav350.ReflectorData_.phi[i] << std::endl;
-						}
-						if(i > 50){
-							break;
-						}
-					}
-					std::cout << "=================================\n" << std::endl;
 				}
 
-				sick_nav350.GetSickMeasurementsWithRemission(range_values, intensity_values,
-					&num_measurements,
-					&sector_step_angle,
-					&sector_start_angle,
-					&sector_stop_angle,
-					&sector_start_timestamp,
-					&sector_stop_timestamp
-				);
+				sick_nav350.AddLandmark(sick_nav350.ReflectorData_.num_reflector, temp);
+				for(int i = 0; i < sick_nav350.ReflectorData_.num_reflector; i++){
 
-				if(sector_start_timestamp < last_time_stamp){
-					loop_rate.sleep();
-					ros::spinOnce();
-					continue;
+					std::cout << "-------------------------------------" << std::endl;
+					std::cout << "Reflector " << i << std::endl;
+					std::cout << "X : " << temp[i][0] << std::endl;
+					std::cout << "Y : " << temp[i][1] << std::endl;
+					std::cout << "Type : " << temp[i][2] << std::endl;
+					std::cout << "Subtype : " << temp[i][3] << std::endl;
+					std::cout << "size : " << temp[i][4] << std::endl;
+					std::cout << "Layer : " << temp[i][5] << std::endl;
+					std::cout << "LayerID : " << temp[i][6] << std::endl;
 				}
-				last_time_stamp = sector_start_timestamp;
-				ros::Time end_scan_time = ros::Time::now();
-
-				double scan_duration = (sector_stop_timestamp - sector_start_timestamp) * 1e-3;
-				avg_scandur.add_new(scan_duration);
-				scan_duration = 0.125;
-				if(last_sector_stop_timestamp == 0){
-					full_duration = 1./((double)sick_motor_speed);
-				} else {
-					full_duration = (sector_stop_timestamp - last_sector_stop_timestamp) * 1e-3;
-				}
-				avg_fulldur.add_new(full_duration);
-				full_duration = avg_fulldur.get_mean();
-
-				ros::Time smoothed_end_scan_time = smoothtimer.smooth_timestamp(end_scan_time, ros::Duration(full_duration));
-				ros::Time start_scan_time = smoothed_end_scan_time - ros::Duration(scan_duration);
-				sector_start_angle -= 180;
-				sector_stop_angle -= 180;
-
-				publish_scan(&scan_pub, range_values, num_measurements, intensity_values,
-					start_scan_time, scan_duration, sector_start_angle, sector_stop_angle);
-
-				sick_nav350.SetSpeed(vx,vy,vth, sector_start_timestamp,0);
 			}
+			std::cout << "=================================\n" << std::endl;
 			loop_rate.sleep();
 			ros::spinOnce();
 
